@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rezerva
+      POSTGRES_USER: rezerva
+      POSTGRES_PASSWORD: rezerva
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg2://rezerva:rezerva@db:5432/rezerva
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+
+  celery:
+    build: ./backend
+    command: celery -A app.services.tasks.celery_app worker --loglevel=info
+    env_file:
+      - ./backend/.env.example
+    depends_on:
+      - backend
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
