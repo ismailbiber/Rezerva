@@ -1,16 +1,27 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
+  AlertIcon,
+  AlertText,
   Box,
   Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  TextField,
-  Typography
-} from '@mui/material';
+  ButtonText,
+  Center,
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText,
+  HStack,
+  Heading,
+  Input,
+  InputField,
+  Spinner,
+  Text,
+  VStack,
+} from '@gluestack-ui/themed';
 
 import { useAuthContext } from '../contexts/AuthContext';
 
@@ -23,10 +34,16 @@ export const LoginPage: React.FC = () => {
   const { login, user, loading } = useAuthContext();
   const navigate = useNavigate();
   const {
-    register,
+    control,
     handleSubmit,
-    formState: { errors, isSubmitting }
-  } = useForm<LoginForm>();
+    formState: { isSubmitting },
+  } = useForm<LoginForm>({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -34,50 +51,117 @@ export const LoginPage: React.FC = () => {
     }
   }, [loading, user, navigate]);
 
-  const onSubmit = async (values: LoginForm) => {
-    await login(values.email, values.password);
-  };
+  const handleLogin = handleSubmit(async (values: LoginForm) => {
+    setAuthError(null);
+    try {
+      await login(values.email, values.password);
+    } catch (error) {
+      setAuthError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+    }
+  });
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <Card sx={{ width: 400, p: 2 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Rezerva Yönetim Paneli
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Lütfen hesabınıza giriş yapın.
-          </Typography>
-          <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-            <TextField
-              label="E-posta"
-              type="email"
-              fullWidth
-              margin="normal"
-              {...register('email', { required: 'E-posta zorunludur' })}
-              error={Boolean(errors.email)}
-              helperText={errors.email?.message}
+    <Center flex={1} minHeight="100vh" bg="$backgroundLight100" px="$6">
+      <Box
+        width="100%"
+        maxWidth={420}
+        bg="$backgroundLight0"
+        p="$6"
+        borderRadius="$xl"
+        shadowColor="$backgroundDark950"
+        shadowOffset={{ width: 0, height: 12 }}
+        shadowOpacity={0.08}
+        shadowRadius={24}
+      >
+        <VStack space="lg">
+          <VStack space="xs">
+            <Heading size="lg">Rezerva Yönetim Paneli</Heading>
+            <Text color="$textLight500">Lütfen hesabınıza giriş yapın.</Text>
+          </VStack>
+
+          <VStack space="md">
+            <Controller
+              name="email"
+              control={control}
+              rules={{ required: 'E-posta zorunludur' }}
+              render={({ field: { value, onChange, onBlur }, fieldState }) => (
+                <FormControl isInvalid={Boolean(fieldState.error)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>E-posta</FormControlLabelText>
+                  </FormControlLabel>
+                  <Input>
+                    <InputField
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder="ornek@rezerva.com"
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  </Input>
+                  {fieldState.error && (
+                    <FormControlError>
+                      <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                    </FormControlError>
+                  )}
+                </FormControl>
+              )}
             />
-            <TextField
-              label="Şifre"
-              type="password"
-              fullWidth
-              margin="normal"
-              {...register('password', { required: 'Şifre zorunludur' })}
-              error={Boolean(errors.password)}
-              helperText={errors.password?.message}
+
+            <Controller
+              name="password"
+              control={control}
+              rules={{ required: 'Şifre zorunludur' }}
+              render={({ field: { value, onChange, onBlur }, fieldState }) => (
+                <FormControl isInvalid={Boolean(fieldState.error)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>Şifre</FormControlLabelText>
+                  </FormControlLabel>
+                  <Input>
+                    <InputField
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder="••••••••"
+                      type="password"
+                    />
+                  </Input>
+                  {fieldState.error && (
+                    <FormControlError>
+                      <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                    </FormControlError>
+                  )}
+                </FormControl>
+              )}
             />
-            <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={isSubmitting}>
-              {isSubmitting ? <CircularProgress size={24} /> : 'Giriş Yap'}
-            </Button>
-          </Box>
-          {loading && !user && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Kullanıcı bilgileri yükleniyor...
+          </VStack>
+
+          {authError && (
+            <Alert action="error" variant="solid" borderRadius="$md">
+              <AlertIcon mr="$2" />
+              <AlertText>{authError}</AlertText>
             </Alert>
           )}
-        </CardContent>
-      </Card>
-    </Box>
+
+          <Button onPress={handleLogin} isDisabled={isSubmitting} action="primary">
+            {isSubmitting ? (
+              <HStack alignItems="center" space="sm">
+                <Spinner color="$textLight0" />
+                <ButtonText>Giriş yapılıyor...</ButtonText>
+              </HStack>
+            ) : (
+              <ButtonText>Giriş Yap</ButtonText>
+            )}
+          </Button>
+
+          {loading && !user && (
+            <Alert action="muted" variant="accent" borderRadius="$md">
+              <AlertIcon mr="$2" />
+              <AlertText>Kullanıcı bilgileri yükleniyor...</AlertText>
+            </Alert>
+          )}
+        </VStack>
+      </Box>
+    </Center>
   );
 };
