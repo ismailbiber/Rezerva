@@ -1,20 +1,33 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
+  AlertIcon,
+  AlertText,
   Box,
   Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  TextField,
-  Typography
-} from '@mui/material';
+  ButtonText,
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText,
+  Heading,
+  HStack,
+  Input,
+  InputField,
+  Modal,
+  ModalBackdrop,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ScrollView,
+  Spinner,
+  Text,
+  VStack,
+} from '@gluestack-ui/themed';
 
 import { apiClient } from '../services/api';
 import type { Venue } from '../types/api';
@@ -35,7 +48,7 @@ export const VenuesPage: React.FC = () => {
     queryFn: async () => {
       const response = await apiClient.get<{ items: Venue[] }>('/venues', { params: { limit: 100 } });
       return response.data.items;
-    }
+    },
   });
 
   const createVenue = useMutation({
@@ -45,92 +58,224 @@ export const VenuesPage: React.FC = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['venues'] });
       setOpen(false);
-    }
+    },
   });
 
-  const { register, handleSubmit, reset } = useForm<VenueForm>({
+  const { control, handleSubmit, reset } = useForm<VenueForm>({
     defaultValues: {
-      timezone: 'Europe/Istanbul'
-    }
+      name: '',
+      slug: '',
+      timezone: 'Europe/Istanbul',
+      address: '',
+      description: '',
+    },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const handleClose = () => {
+    setOpen(false);
+    reset({ name: '', slug: '', timezone: 'Europe/Istanbul', address: '', description: '' });
+  };
+
+  const submitVenue = handleSubmit(async (values) => {
     await createVenue.mutateAsync(values);
-    reset();
+    reset({ name: '', slug: '', timezone: 'Europe/Istanbul', address: '', description: '' });
   });
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5">Lokasyonlar</Typography>
-        <Button variant="contained" onClick={() => setOpen(true)}>
-          Yeni Lokasyon
+    <VStack space="lg">
+      <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" space="md">
+        <Heading size="lg">Lokasyonlar</Heading>
+        <Button action="primary" onPress={() => setOpen(true)}>
+          <ButtonText>Yeni Lokasyon</ButtonText>
         </Button>
-      </Box>
+      </HStack>
+
       {isLoading ? (
-        <Typography>Lokasyonlar yükleniyor...</Typography>
+        <HStack alignItems="center" space="sm">
+          <Spinner />
+          <Text color="$textLight700">Lokasyonlar yükleniyor...</Text>
+        </HStack>
       ) : isError ? (
-        <Alert severity="error">Lokasyonlar yüklenemedi.</Alert>
+        <Alert action="error" variant="solid" borderRadius="$md">
+          <AlertIcon mr="$2" />
+          <AlertText>Lokasyonlar yüklenemedi.</AlertText>
+        </Alert>
       ) : data && data.length > 0 ? (
-        <Grid container spacing={3}>
+        <VStack space="md">
           {data.map((venue) => (
-            <Grid item xs={12} md={6} key={venue.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">{venue.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {venue.address || 'Adres bilgisi girilmemiş'}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Zaman Dilimi: {venue.timezone}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Alan Sayısı: {venue.spaces.length}
-                  </Typography>
-                  {venue.spaces.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2">Alanlar</Typography>
-                      <ul>
-                        {venue.spaces.map((space) => (
-                          <li key={space.id}>
-                            {space.name} – Kapasite: {space.capacity}
-                          </li>
-                        ))}
-                      </ul>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
+            <Box
+              key={venue.id}
+              bg="$backgroundLight0"
+              borderRadius="$lg"
+              borderWidth="$1"
+              borderColor="$borderLight200"
+              p="$5"
+            >
+              <VStack space="sm">
+                <Heading size="md">{venue.name}</Heading>
+                <Text color="$textLight500">{venue.address || 'Adres bilgisi girilmemiş'}</Text>
+                <Text color="$textLight600">Zaman Dilimi: {venue.timezone}</Text>
+                <Text color="$textLight600">Alan Sayısı: {venue.spaces.length}</Text>
+                {venue.spaces.length > 0 && (
+                  <Box borderWidth="$1" borderColor="$borderLight200" borderRadius="$md" p="$3" bg="$backgroundLight50">
+                    <Text fontWeight="$semibold" mb="$2">
+                      Alanlar
+                    </Text>
+                    <VStack space="xs">
+                      {venue.spaces.map((space) => (
+                        <Text key={space.id} color="$textLight700">
+                          {space.name} • Kapasite: {space.capacity}
+                        </Text>
+                      ))}
+                    </VStack>
+                  </Box>
+                )}
+              </VStack>
+            </Box>
           ))}
-        </Grid>
+        </VStack>
       ) : (
-        <Alert severity="info">Henüz lokasyon tanımlanmamış.</Alert>
+        <Alert action="muted" variant="accent" borderRadius="$md">
+          <AlertIcon mr="$2" />
+          <AlertText>Henüz lokasyon tanımlanmamış.</AlertText>
+        </Alert>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Yeni Lokasyon Ekle</DialogTitle>
-        <DialogContent>
-          <Box component="form" id="venue-form" onSubmit={onSubmit} sx={{ mt: 1 }}>
-            <TextField label="İsim" fullWidth margin="normal" {...register('name', { required: true })} />
-            <TextField label="Slug" fullWidth margin="normal" {...register('slug', { required: true })} />
-            <TextField label="Adres" fullWidth margin="normal" {...register('address')} />
-            <TextField label="Zaman Dilimi" fullWidth margin="normal" {...register('timezone', { required: true })} />
-            <TextField label="Açıklama" fullWidth margin="normal" multiline minRows={2} {...register('description')} />
-          </Box>
-          {createVenue.isError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Lokasyon oluşturulamadı. Bilgileri kontrol edin.
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Vazgeç</Button>
-          <Button type="submit" form="venue-form" variant="contained" disabled={createVenue.isPending}>
-            Kaydet
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <Modal isOpen={open} onClose={handleClose} size="lg">
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="md">Yeni Lokasyon Ekle</Heading>
+          </ModalHeader>
+          <ModalBody>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <VStack space="md" mt="$2">
+                <Controller
+                  name="name"
+                  control={control}
+                  rules={{ required: 'Lokasyon adı zorunludur' }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>İsim</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value} onChangeText={onChange} placeholder="Lokasyon adı" />
+                      </Input>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="slug"
+                  control={control}
+                  rules={{ required: 'Slug zorunludur' }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Slug</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value} onChangeText={onChange} placeholder="ornek-lokasyon" />
+                      </Input>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="address"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>Adres</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value ?? ''} onChangeText={onChange} placeholder="Adres bilgisi" />
+                      </Input>
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="timezone"
+                  control={control}
+                  rules={{ required: 'Zaman dilimi zorunludur' }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Zaman Dilimi</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value} onChangeText={onChange} placeholder="Europe/Istanbul" />
+                      </Input>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="description"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>Açıklama</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          value={value ?? ''}
+                          onChangeText={onChange}
+                          placeholder="Lokasyon hakkında bilgiler"
+                          multiline
+                          numberOfLines={3}
+                        />
+                      </Input>
+                    </FormControl>
+                  )}
+                />
+              </VStack>
+            </ScrollView>
+            {createVenue.isError && (
+              <Alert action="error" variant="solid" borderRadius="$md" mt="$4">
+                <AlertIcon mr="$2" />
+                <AlertText>Lokasyon oluşturulamadı. Bilgileri kontrol edin.</AlertText>
+              </Alert>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <HStack space="md" justifyContent="flex-end" width="100%">
+              <Button variant="outline" action="secondary" onPress={handleClose}>
+                <ButtonText>Vazgeç</ButtonText>
+              </Button>
+              <Button onPress={submitVenue} isDisabled={createVenue.isPending} action="primary">
+                {createVenue.isPending ? (
+                  <HStack alignItems="center" space="sm">
+                    <Spinner color="$textLight0" />
+                    <ButtonText>Kaydediliyor...</ButtonText>
+                  </HStack>
+                ) : (
+                  <ButtonText>Kaydet</ButtonText>
+                )}
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </VStack>
   );
 };

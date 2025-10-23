@@ -9,23 +9,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.1",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.10",
-    "@mui/material": "^5.15.10",
     "@tanstack/react-query": "^5.27.1",
+    "@gluestack-style/react": "^1.0.0",
+    "@gluestack-ui/config": "^1.0.0",
+    "@gluestack-ui/icons": "^1.0.0",
+    "@gluestack-ui/themed": "^1.0.0",
     "axios": "^1.6.7",
     "dayjs": "^1.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.50.0",
+    "react-native-web": "^0.19.10",
     "react-router-dom": "^6.22.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@types/react-native": "^0.74.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "babel-plugin-gluestack-style": "^1.0.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.12"
   }

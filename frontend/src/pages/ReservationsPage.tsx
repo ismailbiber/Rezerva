@@ -1,32 +1,54 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
+  AlertIcon,
+  AlertText,
+  Badge,
+  BadgeText,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  MenuItem,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography
-} from '@mui/material';
+  ButtonText,
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText,
+  Heading,
+  HStack,
+  Input,
+  InputField,
+  Modal,
+  ModalBackdrop,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ScrollView,
+  Spinner,
+  Text,
+  VStack,
+  Select,
+  SelectBackdrop,
+  Icon,
+  SelectContent,
+  SelectDragIndicator,
+  SelectDragIndicatorWrapper,
+  SelectIcon,
+  SelectInput,
+  SelectItem,
+  SelectPortal,
+  SelectTrigger,
+} from '@gluestack-ui/themed';
+import { ChevronDownIcon } from '@gluestack-ui/icons';
 import dayjs from 'dayjs';
 
 import { apiClient } from '../services/api';
 import type { Reservation, ReservationStatus, Space } from '../types/api';
 
 interface ReservationForm {
-  space_id: number;
+  space_id?: number;
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
@@ -41,6 +63,14 @@ const statusLabels: Record<ReservationStatus, string> = {
   cancelled: 'İptal',
   checked_in: 'Giriş Yapıldı',
   completed: 'Tamamlandı'
+};
+
+const statusColors: Record<ReservationStatus, string> = {
+  pending: '$amber500',
+  confirmed: '$emerald500',
+  cancelled: '$rose500',
+  checked_in: '$blue500',
+  completed: '$teal500',
 };
 
 export const ReservationsPage: React.FC = () => {
@@ -73,128 +103,357 @@ export const ReservationsPage: React.FC = () => {
     }
   });
 
-  const { register, handleSubmit, reset } = useForm<ReservationForm>({
+  const { control, handleSubmit, reset } = useForm<ReservationForm>({
     defaultValues: {
+      space_id: undefined,
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
+      notes: '',
       start_time: dayjs().add(1, 'hour').format('YYYY-MM-DDTHH:mm'),
-      end_time: dayjs().add(2, 'hour').format('YYYY-MM-DDTHH:mm')
-    }
+      end_time: dayjs().add(2, 'hour').format('YYYY-MM-DDTHH:mm'),
+    },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    reset({
+      space_id: undefined,
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
+      notes: '',
+      start_time: dayjs().add(1, 'hour').format('YYYY-MM-DDTHH:mm'),
+      end_time: dayjs().add(2, 'hour').format('YYYY-MM-DDTHH:mm'),
+    });
+  };
+
+  const submitReservation = handleSubmit(async (values) => {
     await createReservation.mutateAsync({
       ...values,
-      space_id: Number(values.space_id),
+      space_id: values.space_id !== undefined ? Number(values.space_id) : undefined,
       start_time: dayjs(values.start_time).toISOString(),
-      end_time: dayjs(values.end_time).toISOString()
+      end_time: dayjs(values.end_time).toISOString(),
     });
-    reset();
+    reset({
+      space_id: undefined,
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
+      notes: '',
+      start_time: dayjs().add(1, 'hour').format('YYYY-MM-DDTHH:mm'),
+      end_time: dayjs().add(2, 'hour').format('YYYY-MM-DDTHH:mm'),
+    });
   });
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5">Rezervasyonlar</Typography>
-        <Button variant="contained" onClick={() => setDialogOpen(true)}>
-          Yeni Rezervasyon
+    <VStack space="lg">
+      <HStack justifyContent="space-between" alignItems="center" flexWrap="wrap" space="md">
+        <Heading size="lg">Rezervasyonlar</Heading>
+        <Button action="primary" onPress={() => setDialogOpen(true)}>
+          <ButtonText>Yeni Rezervasyon</ButtonText>
         </Button>
-      </Box>
+      </HStack>
+
       {isLoading ? (
-        <Typography>Rezervasyonlar yükleniyor...</Typography>
+        <HStack alignItems="center" space="sm">
+          <Spinner />
+          <Text color="$textLight700">Rezervasyonlar yükleniyor...</Text>
+        </HStack>
       ) : isError ? (
-        <Alert severity="error">Rezervasyonlar yüklenemedi.</Alert>
+        <Alert action="error" variant="solid" borderRadius="$md">
+          <AlertIcon mr="$2" />
+          <AlertText>Rezervasyonlar yüklenemedi.</AlertText>
+        </Alert>
       ) : reservations && reservations.length > 0 ? (
-        <Paper>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Müşteri</TableCell>
-                <TableCell>Alan</TableCell>
-                <TableCell>Başlangıç</TableCell>
-                <TableCell>Bitiş</TableCell>
-                <TableCell>Durum</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {reservations.map((reservation) => {
-                const spaceName = spaces?.find((s) => s.id === reservation.space_id)?.name ?? 'Bilinmiyor';
-                return (
-                  <TableRow key={reservation.id}>
-                    <TableCell>
-                      <Typography fontWeight={600}>{reservation.customer_name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {reservation.customer_email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{spaceName}</TableCell>
-                    <TableCell>{dayjs(reservation.start_time).format('DD MMM YYYY HH:mm')}</TableCell>
-                    <TableCell>{dayjs(reservation.end_time).format('DD MMM YYYY HH:mm')}</TableCell>
-                    <TableCell>{statusLabels[reservation.status]}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Paper>
+        <VStack space="md">
+          {reservations.map((reservation) => {
+            const spaceName = spaces?.find((s) => s.id === reservation.space_id)?.name ?? 'Bilinmiyor';
+            return (
+              <Box
+                key={reservation.id}
+                bg="$backgroundLight0"
+                borderRadius="$lg"
+                borderWidth="$1"
+                borderColor="$borderLight200"
+                p="$5"
+              >
+                <HStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" space="md">
+                  <VStack space="xs">
+                    <Text fontWeight="$bold" color="$textLight900" fontSize="$lg">
+                      {reservation.customer_name}
+                    </Text>
+                    <Text color="$textLight500">{reservation.customer_email}</Text>
+                    {reservation.customer_phone && (
+                      <Text color="$textLight500">{reservation.customer_phone}</Text>
+                    )}
+                  </VStack>
+                  <Badge bg={statusColors[reservation.status]} borderRadius="$md" px="$3" py="$1">
+                    <BadgeText color="$textLight0">{statusLabels[reservation.status]}</BadgeText>
+                  </Badge>
+                </HStack>
+                <HStack mt="$4" space="lg" flexWrap="wrap">
+                  <VStack space="xs">
+                    <Text color="$textLight500" fontSize="$xs">
+                      Alan
+                    </Text>
+                    <Text color="$textLight800">{spaceName}</Text>
+                  </VStack>
+                  <VStack space="xs">
+                    <Text color="$textLight500" fontSize="$xs">
+                      Başlangıç
+                    </Text>
+                    <Text color="$textLight800">{dayjs(reservation.start_time).format('DD MMM YYYY HH:mm')}</Text>
+                  </VStack>
+                  <VStack space="xs">
+                    <Text color="$textLight500" fontSize="$xs">
+                      Bitiş
+                    </Text>
+                    <Text color="$textLight800">{dayjs(reservation.end_time).format('DD MMM YYYY HH:mm')}</Text>
+                  </VStack>
+                </HStack>
+                {reservation.notes && (
+                  <Box mt="$3">
+                    <Text color="$textLight500" fontSize="$xs">
+                      Notlar
+                    </Text>
+                    <Text color="$textLight800">{reservation.notes}</Text>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </VStack>
       ) : (
-        <Alert severity="info">Henüz rezervasyon bulunmuyor.</Alert>
+        <Alert action="muted" variant="accent" borderRadius="$md">
+          <AlertIcon mr="$2" />
+          <AlertText>Henüz rezervasyon bulunmuyor.</AlertText>
+        </Alert>
       )}
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Yeni Rezervasyon Oluştur</DialogTitle>
-        <DialogContent>
-          <Box component="form" sx={{ mt: 1 }} onSubmit={onSubmit} id="reservation-form">
-            <TextField
-              select
-              label="Alan"
-              fullWidth
-              margin="normal"
-              defaultValue=""
-              {...register('space_id', { required: true })}
-            >
-              {spaces?.map((space) => (
-                <MenuItem key={space.id} value={space.id}>
-                  {space.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Başlangıç"
-                  type="datetime-local"
-                  fullWidth
-                  margin="normal"
-                  {...register('start_time', { required: true })}
+      <Modal isOpen={dialogOpen} onClose={handleDialogClose} size="lg">
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="md">Yeni Rezervasyon Oluştur</Heading>
+          </ModalHeader>
+          <ModalBody>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <VStack space="md" mt="$2">
+                <Controller
+                  name="space_id"
+                  control={control}
+                  rules={{
+                    required: 'Alan seçilmelidir',
+                    validate: (value) => (value ? true : 'Alan seçilmelidir'),
+                  }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Alan</FormControlLabelText>
+                      </FormControlLabel>
+                      <Select
+                        selectedValue={value !== undefined ? String(value) : undefined}
+                        onValueChange={(selected) =>
+                          onChange(selected ? Number(selected) : undefined)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectInput
+                            placeholder="Alan seçin"
+                            value={value !== undefined ? spaces?.find((space) => space.id === value)?.name ?? '' : ''}
+                          />
+                          <SelectIcon mr="$2">
+                            <Icon as={ChevronDownIcon} />
+                          </SelectIcon>
+                        </SelectTrigger>
+                        <SelectPortal>
+                          <SelectBackdrop />
+                          <SelectContent>
+                            <SelectDragIndicatorWrapper>
+                              <SelectDragIndicator />
+                            </SelectDragIndicatorWrapper>
+                            {spaces?.map((space) => (
+                              <SelectItem key={space.id} label={space.name} value={String(space.id)} />
+                            ))}
+                          </SelectContent>
+                        </SelectPortal>
+                      </Select>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
                 />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Bitiş"
-                  type="datetime-local"
-                  fullWidth
-                  margin="normal"
-                  {...register('end_time', { required: true })}
+
+                <HStack space="md" flexWrap="wrap">
+                  <Box flex={1} minWidth={200}>
+                    <Controller
+                      name="start_time"
+                      control={control}
+                      rules={{ required: 'Başlangıç zamanı zorunludur' }}
+                      render={({ field: { value, onChange }, fieldState }) => (
+                        <FormControl isInvalid={Boolean(fieldState.error)}>
+                          <FormControlLabel>
+                            <FormControlLabelText>Başlangıç</FormControlLabelText>
+                          </FormControlLabel>
+                          <Input>
+                            <InputField
+                              type="datetime-local"
+                              value={value}
+                              onChangeText={onChange}
+                            />
+                          </Input>
+                          {fieldState.error && (
+                            <FormControlError>
+                              <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                            </FormControlError>
+                          )}
+                        </FormControl>
+                      )}
+                    />
+                  </Box>
+                  <Box flex={1} minWidth={200}>
+                    <Controller
+                      name="end_time"
+                      control={control}
+                      rules={{ required: 'Bitiş zamanı zorunludur' }}
+                      render={({ field: { value, onChange }, fieldState }) => (
+                        <FormControl isInvalid={Boolean(fieldState.error)}>
+                          <FormControlLabel>
+                            <FormControlLabelText>Bitiş</FormControlLabelText>
+                          </FormControlLabel>
+                          <Input>
+                            <InputField
+                              type="datetime-local"
+                              value={value}
+                              onChangeText={onChange}
+                            />
+                          </Input>
+                          {fieldState.error && (
+                            <FormControlError>
+                              <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                            </FormControlError>
+                          )}
+                        </FormControl>
+                      )}
+                    />
+                  </Box>
+                </HStack>
+
+                <Controller
+                  name="customer_name"
+                  control={control}
+                  rules={{ required: 'Müşteri adı zorunludur' }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Müşteri Adı</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value} onChangeText={onChange} placeholder="Müşteri adı" />
+                      </Input>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
                 />
-              </Grid>
-            </Grid>
-            <TextField label="Müşteri Adı" fullWidth margin="normal" {...register('customer_name', { required: true })} />
-            <TextField label="Müşteri E-posta" type="email" fullWidth margin="normal" {...register('customer_email', { required: true })} />
-            <TextField label="Telefon" fullWidth margin="normal" {...register('customer_phone')} />
-            <TextField label="Notlar" fullWidth multiline minRows={2} margin="normal" {...register('notes')} />
-          </Box>
-          {createReservation.isError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Rezervasyon oluşturulamadı. Lütfen bilgileri kontrol edin.
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Vazgeç</Button>
-          <Button type="submit" form="reservation-form" variant="contained" disabled={createReservation.isPending}>
-            Kaydet
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+
+                <Controller
+                  name="customer_email"
+                  control={control}
+                  rules={{ required: 'Müşteri e-posta adresi zorunludur' }}
+                  render={({ field: { value, onChange }, fieldState }) => (
+                    <FormControl isInvalid={Boolean(fieldState.error)}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Müşteri E-posta</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="ornek@rezerva.com"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                        />
+                      </Input>
+                      {fieldState.error && (
+                        <FormControlError>
+                          <FormControlErrorText>{fieldState.error.message}</FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="customer_phone"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>Telefon</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField value={value ?? ''} onChangeText={onChange} placeholder="0 555 555 55 55" />
+                      </Input>
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="notes"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>Notlar</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          value={value ?? ''}
+                          onChangeText={onChange}
+                          placeholder="Rezervasyona dair ek bilgiler"
+                          multiline
+                          numberOfLines={3}
+                        />
+                      </Input>
+                    </FormControl>
+                  )}
+                />
+              </VStack>
+            </ScrollView>
+            {createReservation.isError && (
+              <Alert action="error" variant="solid" borderRadius="$md" mt="$4">
+                <AlertIcon mr="$2" />
+                <AlertText>Rezervasyon oluşturulamadı. Lütfen bilgileri kontrol edin.</AlertText>
+              </Alert>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <HStack space="md" justifyContent="flex-end" width="100%">
+              <Button variant="outline" action="secondary" onPress={handleDialogClose}>
+                <ButtonText>Vazgeç</ButtonText>
+              </Button>
+              <Button onPress={submitReservation} isDisabled={createReservation.isPending} action="primary">
+                {createReservation.isPending ? (
+                  <HStack alignItems="center" space="sm">
+                    <Spinner color="$textLight0" />
+                    <ButtonText>Kaydediliyor...</ButtonText>
+                  </HStack>
+                ) : (
+                  <ButtonText>Kaydet</ButtonText>
+                )}
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </VStack>
   );
 };

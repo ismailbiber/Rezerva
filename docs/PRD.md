@@ -28,7 +28,7 @@ Rezerva; otel, ofis, etkinlik alanı ve çok lokasyonlu işletmeler için tasarl
 4. **Gösterge Paneli**
    - Toplam lokasyon/alan/rezervasyon sayıları.
    - Yaklaşan rezervasyon listesi.
-   - React + Material UI ile responsive yönetim arayüzü.
+   - React + Gluestack UI ile responsive yönetim arayüzü.
 
 5. **DevOps / Dağıtım Hazırlığı**
    - Docker + docker-compose ile Postgres, Redis, FastAPI, Celery ve Vite tabanlı frontend konteynerleri.
@@ -44,7 +44,7 @@ Rezerva; otel, ofis, etkinlik alanı ve çok lokasyonlu işletmeler için tasarl
 
 ## 5. Teknik Gereksinimler
 - **Backend:** Python 3.11, FastAPI, SQLAlchemy 2.x, PostgreSQL, Redis, Celery, Alembic.
-- **Frontend:** React 18, Vite, TypeScript, Material UI, React Query, React Router.
+- **Frontend:** React 18, Vite, TypeScript, Gluestack UI, React Query, React Router.
 - **Altyapı:** Docker Compose ile çoklu servis orkestrasyonu.
 - **Güvenlik:** JWT, şifre hash (bcrypt), rol bazlı erişim kontrolü.
 - **Gözlenebilirlik:** Loguru ile yapılandırılmış loglama, sağlık kontrolü uç noktası.
